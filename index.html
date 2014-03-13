@@ -1,0 +1,80 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<script type=text/javascript src="http://ajax.googleapis.com/ajax/libs/jquery/1.4/jquery.min.js"></script>
+<script type="text/javascript">
+function check_batch_domains( main_batch ) {
+    var max_limit = 10;
+    var batch = [];
+
+    // Break <main_batch> in <max_limit> chunks and check domains.
+    if (main_batch.length > max_limit) {
+	var resultsDOM = $("#results");
+	resultsDOM.html("You can't search more than 10 domains one time.");
+	return;
+    }
+    
+    batch = main_batch.splice( 0, max_limit );
+    console.log( 'Checking one batch of ' + batch.length );
+    $.ajax({
+	url : 'http://www.panabee.com/domains/bulk_check.json',
+	data : { 'domains' : JSON.stringify(batch) },
+	dataType : 'jsonp',
+	success : function( resp ) {
+	    console.log( 'Done fetching batch' );
+	    process_batch_domains( resp );
+	},
+	error : function() {
+	    console.log( '+++ Error: unable to process AJAX for bulk check. Domains: ' + batch );
+	},
+    });
+}
+
+function process_batch_domains( resp ) {
+    // Return if no results
+    if ( !resp || !resp.results) return;
+
+    // If here, process results
+    // Results is an array of arrays, where each inner array includes data
+    // for a single domain in the form [domain,status].
+    var domain_data = {};
+    $( resp.results ).each( function() {
+        // Create object that <process_domain_status> understands
+        domain_data.domain = this.domain;
+        domain_data.status = this.status;
+        process_domain_status( domain_data );
+    });
+}
+
+function process_domain_status( resp ) {
+    // Return if no data
+    if ( !resp.domain || !resp.status) return;
+
+    // If here, process domain data
+    var domain = resp.domain;
+    var status = resp.status;
+
+    var resultsDOM = $("#results");
+    resultsDOM.html(resultsDOM.html() + "<br/>" + domain + ": " + status);
+}
+
+$(document).ready(function(){
+  $("#searchButton").click(function(){
+    var resultsDOM = $("#results");
+    resultsDOM.html("");
+    var max_limit = 18;
+    var batch = [];
+    var textarea = $("#domains");
+    main_batch = textarea.val().split("\n");
+    check_batch_domains(main_batch);
+  });
+});
+</script>
+</head>
+<body>
+<div><h2>Search Available Domains:(One domain per line, up to 10 lines):</h2></div>
+<textarea id="domains" rows="18" cols="50"></textarea>
+<div id="results"><h2>Results:</h2></div>
+<button id="searchButton" type="button">Search</button>
+</body>
+</html>
